@@ -7,4 +7,4 @@ target/
 .idea/
 
 #  ignore cmake build folder
-build/
+build/*

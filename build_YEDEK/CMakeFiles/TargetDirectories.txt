@@ -1,3 +1,0 @@
-/home/unlut/Desktop/TUTORIALS/c++/allegro/oyun/build/CMakeFiles/edit_cache.dir
-/home/unlut/Desktop/TUTORIALS/c++/allegro/oyun/build/CMakeFiles/rebuild_cache.dir
-/home/unlut/Desktop/TUTORIALS/c++/allegro/oyun/build/CMakeFiles/testAllegro.dir
