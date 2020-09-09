@@ -1,10 +1,11 @@
 #ifndef MULTIPLAYERSTATE_H
 #define MULTIPLAYERSTATE_H
 
+
 #include <map>
 #include <vector>
 #include <cstdint> //  for uint types
-
+#include <string>
 
 #include <allegro5/allegro.h>
 #include "allegro5/allegro_image.h"
@@ -93,6 +94,14 @@ private:
 	std::vector< std::vector<int> > playerAllX;
 	std::vector< std::vector<int> > playerAllY;
 	std::vector< std::vector<uint8_t> > playerAllDir;
+
+	std::vector<bool> playerAlive;
+	bool gameFinishSignal;
+	bool playerWon;
+	std::string wonPlayerName;
+
+	ALLEGRO_FONT* wonTextFont;
+	int wonPlayerIndex;
 	
 	
 	//  sound effects
@@ -106,6 +115,7 @@ private:
 
 	 
 	uint8_t playerId;
+	std::string playerName;
 	int playerCount;
 	
 
@@ -116,6 +126,7 @@ private:
 	uint32_t renderFrameCounter;
 	uint32_t currentLockstepTurn;
 	std::vector<uint64_t> lockstepTurnFinishTimesMilliseconds;
+	std::vector<std::string> playerNames;
 
 
 
@@ -137,6 +148,7 @@ private:
 	std::vector< std::vector<Packet*> > clientMessages;
 	std::vector<Packet*> selfMessages;
 	int lastSentTurn;
+	std::vector<std::string> clientNames;
 
 	//  client network variables
 	Socket clientSocket;

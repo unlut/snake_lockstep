@@ -373,12 +373,28 @@ PacketPlayerList::PacketPlayerList(uint8_t playerCount, std::vector<uint8_t>play
     this->packetType = PACKET_TYPE_PLAYER_LIST;
 }
 
+PacketPlayerList::PacketPlayerList(uint8_t playerCount, std::vector<uint8_t>playerIds, uint8_t playerId, std::vector<std::string> playerNames)
+{
+    this->playerCount = playerCount;
+    for (size_t i = 0; i < playerCount; ++i)//maybe sanity check for playerCount == size of vector
+    {
+        this->playerIds.push_back(playerIds[i]);
+        this->playerNames.push_back(playerNames[i]);
+    }
+    this->playerId = playerId;
+
+
+    this->packetType = PACKET_TYPE_PLAYER_LIST;
+}
+
 void PacketPlayerList::Write(Buffer &buffer)
 {
     WriteByte(buffer, playerCount);
     for (size_t i = 0; i < playerCount; ++i)//maybe sanity check for playerCount == size of vector
     {
         WriteByte(buffer, playerIds[i]);
+        WriteShort(buffer, playerNames[i].length());
+        WriteString(buffer, playerNames[i]);
     }
     WriteByte(buffer, playerId);
 }
@@ -390,6 +406,8 @@ void PacketPlayerList::Read(Buffer &buffer)
     for (size_t i = 0; i < playerCount; ++i)//maybe sanity check for playerCount == size of vector
     {
         playerIds.push_back(ReadByte(buffer));
+        uint16_t playerNameLength = ReadShort(buffer);
+        playerNames.push_back(ReadString(buffer, playerNameLength));
     }
 
     playerId = ReadByte(buffer);

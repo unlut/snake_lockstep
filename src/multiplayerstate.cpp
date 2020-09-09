@@ -114,6 +114,9 @@ bool MultiPlayerState::InitHost()
 
 	std::cerr << "Host --- All " << numAcceptedClients << " clients are connected." << std::endl;
 
+	//  initialize clientNames variable
+	clientNames.resize(numAcceptedClients);
+
 	//  wait for an initial message from clients which contains their name
 	int numKnownClients = 0;
 	std::vector<bool> clientIdentified(numClients);
@@ -141,6 +144,9 @@ bool MultiPlayerState::InitHost()
 						fprintf(stderr, "Entered player name:%s\n", enteredPackage.playerName.c_str());
 						++numKnownClients;
 						clientIdentified[i] = true;
+
+						//  save client name
+						clientNames[i] = enteredPackage.playerName;
 					}
 				}
 			}
@@ -162,11 +168,21 @@ bool MultiPlayerState::InitHost()
 	}
 	uint8_t whichPlayer = 0;  //  host is assumed to be 0
 
+	//  initialize playerNames and playerAlive variable
+	playerNames.resize(numPlayers);
+	playerNames[0] = playerName;
+	playerAlive[0] = true;
+	for (int i = 0; i < numKnownClients; ++i)
+	{
+		playerNames[i+1] = clientNames[i];
+		playerAlive[i+1] = true;
+	}
+
 	for (int i = 0; i < numKnownClients; ++i)
 	{
 		whichPlayer = playerIdMap[i];
 
-		PacketPlayerList playerList(numPlayers, playerIds, whichPlayer);
+		PacketPlayerList playerList(numPlayers, playerIds, whichPlayer, playerNames);
 		acceptSockets[i].Send(playerList);
 	}
 	this->playerCount = numPlayers;
@@ -266,6 +282,20 @@ bool MultiPlayerState::InitClient()
 			std::cerr << "I am player " << (int)playerList.playerId << std::endl;
 			this->playerCount = playerList.playerCount;
 			this->playerId = playerList.playerId;
+
+			//  store player names
+			playerNames.resize(this->playerCount);
+			for (size_t i = 0; i < this->playerCount; ++i)
+			{
+				playerNames[i] = playerList.playerNames[i];
+				std::cerr << "Name of player " << (int)i << ":" << playerNames[i] << std::endl;
+			}
+
+			//  initialize player status
+			for (size_t i = 0; i < this->playerCount; ++i)
+			{
+				playerAlive[i] = true;
+			}
 		}
 	}
 
@@ -366,6 +396,15 @@ void MultiPlayerState::Init()
 		playerAllDir.push_back(std::vector<uint8_t>());
 		playerAllDir[i].push_back(playerDir[i]);
 	}
+
+
+	//  initialize player status
+	for (int i = 0; i < 4; ++i)
+	{
+		playerAlive.push_back(false);
+	}
+
+	gameFinishSignal = false;
 	
 
 
@@ -375,6 +414,21 @@ void MultiPlayerState::Init()
 	if (tickSound == NULL)
 	{
 		std::cerr << "Unable to load tickSound!" << std::endl;
+	}
+	crashSound = al_load_sample("sounds/RockHeavyBashMetal1.wav");
+	if (crashSound == NULL)
+	{
+		std::cerr << "Unable to load crashSound!" << std::endl;
+	}
+
+
+	//  initialize fonts
+	std::cerr << "Initializing fonts..." << std::endl;
+	const int buttonFontSize = 30;
+	wonTextFont = al_load_font("fonts/DejaVuSans.ttf", buttonFontSize, NULL);
+	if (wonTextFont == NULL)
+	{
+		printf("Unable to load font!\n");
 	}
 
 
@@ -440,6 +494,7 @@ void MultiPlayerState::Init()
 
 	hostPort = std::stoi(configMap["hostport"]);
 	numClients = std::stoi(configMap["numclients"]);
+	playerName = configMap["playername"];
 
 
 	//  initialize socket system
@@ -548,7 +603,29 @@ void MultiPlayerState::HandleEvents(GameEngine* game)
 
 void MultiPlayerState::Update(GameEngine* game) 
 {
-	
+	if (gameFinishSignal)
+	{
+		//  Draw one last time
+		Draw(game);
+
+
+		//  destroy receiver thread
+		if (receiveThread != NULL)
+    		al_destroy_thread(receiveThread);
+
+		//  destroy logic thread
+		if (logicThread != NULL)
+    		al_destroy_thread(logicThread);
+
+		//  close sockets
+
+		
+
+
+		//  end game
+		game->SetRunning(false);
+
+	}
 }
 
 void MultiPlayerState::Draw(GameEngine* game) 
@@ -559,9 +636,14 @@ void MultiPlayerState::Draw(GameEngine* game)
 
 	//  TODO: These variables may need a mutex protection
 	//because they might be modified from logic thread!
-	size_t positionCount = playerAllX[0].size();
+	size_t positionCount = 0;
+	for (size_t i = 0; i < playerCount; ++i)
+	{
+		positionCount = std::max(positionCount, playerAllX[i].size());
+	}
+	//size_t positionCount = playerAllX[0].size();
 	size_t lastTimeIndex = positionCount-2;  //lockstepTurnFinishTimesMilliseconds.size()-1;
-	std::cerr << "positionCount:" << positionCount << std::endl;
+	//std::cerr << "positionCount:" << positionCount << std::endl;
 
 
 	//  interpolate when drawing last rectangle
@@ -612,7 +694,13 @@ void MultiPlayerState::Draw(GameEngine* game)
 	for (int i = 0; i < playerCount; ++i)
 	{
 		//  draw rectangles between two positions, except last pair
-		for (size_t j = 0; j < positionCount-2; ++j)
+		size_t playerPositionCount;
+		if (playerAlive[i])
+			playerPositionCount = positionCount;
+		else
+			playerPositionCount = playerAllX[i].size() + 1;  //  +1 so it draws all rectangles including last one
+		
+		for (size_t j = 0; j < playerPositionCount-2; ++j)
 		{
 			
 			int cx1 = playerAllX[i][j];
@@ -630,8 +718,8 @@ void MultiPlayerState::Draw(GameEngine* game)
 
 			al_draw_filled_rectangle(x1, y1, x2, y2, playerColors[i]);
 		}
-		if (i==0)
-    		std::cerr << "last fullblock x2:" << std::max(playerAllX[i][positionCount-3], playerAllX[i][positionCount-2]) + SNAKE_WIDTH << std::endl;
+		//if (i==0)
+    	//	std::cerr << "last fullblock x2:" << std::max(playerAllX[i][playerPositionCount-3], playerAllX[i][playerPositionCount-2]) + SNAKE_WIDTH << std::endl;
 	}
 		
 	if (true){
@@ -640,6 +728,8 @@ void MultiPlayerState::Draw(GameEngine* game)
 	{
 		for (int i = 0; i < playerCount; ++i)
 		{
+			if (!playerAlive[i])
+				continue;
 			//  just draw last rectangle as a whole
 
 			int cx1 = playerAllX[i][positionCount-2];
@@ -654,8 +744,8 @@ void MultiPlayerState::Draw(GameEngine* game)
 			int x2 = std::max(cx1, cx2) + SNAKE_WIDTH;
 			int y2 = std::max(cy1, cy2) + SNAKE_HEIGHT;
 
-			if (i==0)
-    			std::cerr << "largediff x2:" << x2 << std::endl;
+			//if (i==0)
+    		//	std::cerr << "largediff x2:" << x2 << std::endl;
 
 			al_draw_filled_rectangle(x1, y1, x2, y2, playerColors[i]);
 		}
@@ -666,7 +756,9 @@ void MultiPlayerState::Draw(GameEngine* game)
 		std::cerr << "interpolation ratio:" << interpolateRatio << std::endl;
 		for (int i = 0; i < playerCount; ++i)
 		{
-			
+			if (!playerAlive[i])
+				continue;
+
 			int cx1 = playerAllX[i][positionCount-2];
 			int cy1 = playerAllY[i][positionCount-2];
 
@@ -696,7 +788,7 @@ void MultiPlayerState::Draw(GameEngine* game)
 				if (lastMovementDir == DIRECTION_RIGHT)
 				{
     				x2 = x1 + (interpolateRatio*xDiff);
-					std::cerr << "interpolate x2:" << x2 << std::endl;
+					//std::cerr << "interpolate x2:" << x2 << std::endl;
 				}
 				else
 					x1 = x2 - (interpolateRatio*xDiff);
@@ -723,6 +815,15 @@ void MultiPlayerState::Draw(GameEngine* game)
 			al_draw_filled_rectangle(x1, y1, x2, y2, playerColors[i]);
 		}
 	}
+	}
+
+
+	//  if a player won the game, write its name
+	if (playerWon)
+	{
+		char wonTextBuffer[200];
+		sprintf(wonTextBuffer, "%s Won!", wonPlayerName.c_str());
+		al_draw_text(wonTextFont, playerColors[wonPlayerIndex], int(SCREEN_WIDTH/2), 100, ALLEGRO_ALIGN_CENTER, wonTextBuffer );
 	}
 
 		
@@ -851,35 +952,69 @@ void* MultiPlayerState::LogicThread(ALLEGRO_THREAD* thread, void* arg)
 				}
 
 				
+				bool playerDeadThisTurn = false;
 				if (canExecuteTurn)
 				{
 					//  STEP 2- Apply actions that needs to be performed this turn
 					for (int i = 0; i < cptr->playerCount; ++i)
 					{
-						//  at each timestep save dir
-						cptr->playerAllDir[i].push_back(cptr->playerDir[i]);
-
-						int newX = cptr->playerX[i] + dx[cptr->playerDir[i]] * SNAKE_SPEED;
-						int newY = cptr->playerY[i] + dy[cptr->playerDir[i]] * SNAKE_SPEED;
-
-						//  TODO: Collision check here
-
-						//  case 1, player collides with already existing area
-						//check traces of all players
-						for (int j = 0; j < cptr->playerCount; ++j)
+						if (cptr->playerAlive[i])
 						{
-							for (size_t k = 0; k < cptr->playerAllX[j].size()-1; ++k)
+							//  at each timestep save dir
+							cptr->playerAllDir[i].push_back(cptr->playerDir[i]);
+
+							int newX = cptr->playerX[i] + dx[cptr->playerDir[i]] * SNAKE_SPEED;
+							int newY = cptr->playerY[i] + dy[cptr->playerDir[i]] * SNAKE_SPEED;
+
+							//  TODO: Collision check here
+
+							//  case 1, player collides with already existing area
+							//check traces of all players
+							for (int j = 0; j < cptr->playerCount; ++j)
 							{
+								for (size_t k = 0; k < cptr->playerAllX[j].size()-1; ++k)
+								{
+									int cx1 = cptr->playerAllX[j][k];
+									int cy1 = cptr->playerAllY[j][k];
 
+									int cx2 = cptr->playerAllX[j][k+1];
+									int cy2 = cptr->playerAllY[j][k+1];
+
+									int x1 = std::min(cx1, cx2) - SNAKE_WIDTH;
+									int y1 = std::min(cy1, cy2) - SNAKE_HEIGHT;
+
+									int x2 = std::max(cx1, cx2) + SNAKE_WIDTH;
+									int y2 = std::max(cy1, cy2) + SNAKE_HEIGHT;
+
+									//  check if rectangle (x1, y1, x2, y2) contains newX newY
+									if (newX >= x1 && newX <= x2
+										&&  newY >= y1 && newY <= y2)
+									{
+										al_play_sample(cptr->crashSound, 1, 0, 1, ALLEGRO_PLAYMODE_ONCE, NULL);
+										std::cerr << cptr->playerNames[j] << " killed " << cptr->playerNames[i] << std::endl;
+										cptr->playerAlive[i] = false;
+
+										//  a player died this turn
+										playerDeadThisTurn = true;
+
+										
+
+										goto END_COLLISION;
+									}
+								}
 							}
+							END_COLLISION:
+
+							cptr->playerX[i] = newX;
+							cptr->playerY[i] = newY;
+
+							cptr->playerAllX[i].push_back(cptr->playerX[i]);
+							cptr->playerAllY[i].push_back(cptr->playerY[i]);
 						}
-
-						cptr->playerX[i] = newX;
-						cptr->playerY[i] = newY;
-
-						cptr->playerAllX[i].push_back(cptr->playerX[i]);
-						cptr->playerAllY[i].push_back(cptr->playerY[i]);
 					}
+
+
+					
 
 
 					//  STEP 3- Send new messages for future turns
@@ -902,6 +1037,51 @@ void* MultiPlayerState::LogicThread(ALLEGRO_THREAD* thread, void* arg)
 				
 				
 				++cptr->logicFrameCounter;
+
+				//  check if game is finished
+				if (playerDeadThisTurn)
+				{	
+					//  check if all players are dead
+					//  also count number of alive players
+					bool allDead = true;
+					int alivePlayerCount = 0;
+					int alivePlayerIndex = -1;
+					for (size_t cihan = 0; cihan < cptr->playerCount; ++cihan)
+					{
+						if (cptr->playerAlive[cihan])
+						{
+							std::cerr << "player " << cihan << " is still alive" << std::endl;
+							++alivePlayerCount;
+							alivePlayerIndex = cihan;
+							allDead = false;
+						}
+					}
+
+					if (alivePlayerCount == 1)
+					{
+						cptr->playerWon = true;
+						cptr->wonPlayerName = cptr->playerNames[alivePlayerIndex];
+						cptr->wonPlayerIndex = alivePlayerIndex;
+					}
+
+					if (allDead)
+					{
+						//  all players are dead, finish the game
+						cptr->gameFinishSignal = true;
+
+						//  signal receive thread to finish
+						cptr->receiveThreadWorking = false;
+
+
+						//  finish this logic thread
+						//after some time
+						al_rest(2.0);
+						return NULL;
+
+						
+
+					}
+				}
 			}
 		}
 	}

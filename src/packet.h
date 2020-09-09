@@ -200,12 +200,16 @@ public:
     //  ids of players in the game
     std::vector<uint8_t> playerIds;
 
+    //  names of players in the game
+    std::vector<std::string> playerNames;
+
     //  id of player receiving this message
     uint8_t playerId;  //  maybe change this variable name to whichPlayer
     
 
     PacketPlayerList();
     PacketPlayerList(uint8_t playerCount, std::vector<uint8_t>playerIds, uint8_t playerId);
+    PacketPlayerList(uint8_t playerCount, std::vector<uint8_t>playerIds, uint8_t playerId, std::vector<std::string> playerNames);
 
     void Write(Buffer &buffer);
     void Read(Buffer &buffer);
