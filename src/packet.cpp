@@ -250,19 +250,19 @@ PacketActions::PacketActions(std::vector<Packet*>* actions, uint32_t lockstepTur
     this->packetType = PACKET_TYPE_ACTIONS;
 
     this->actionCount = (*actions).size();  //  sanity check actions.size == actionTypes.size ?
-    std::cerr << "beforereferences\n";
-    std::cerr << "act count:" << (int)this->actionCount << std::endl;
+    //std::cerr << "beforereferences\n";
+    //std::cerr << "act count:" << (int)this->actionCount << std::endl;
     this->actionTypes = NULL;
     this->actions = actions;
 
     uint16_t totalSize = 0;
-    std::cerr << "beforeloop\n";
+    //std::cerr << "beforeloop\n";
     for (size_t i = 0; i < actionCount; ++i)
     {
-        std::cerr << "iter " << i << " packet type:" << (int) ((*actions)[i]->GetPacketType()) << std::endl;
+        //std::cerr << "iter " << i << " packet type:" << (int) ((*actions)[i]->GetPacketType()) << std::endl;
         totalSize += (*actions)[i]->GetBufferSize();
     }
-    std::cerr << "afterloop\n";
+    //std::cerr << "afterloop\n";
 
     //  add size of action types to total size
     totalSize += actionCount;

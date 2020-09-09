@@ -557,11 +557,17 @@ void MultiPlayerState::Draw(GameEngine* game)
 	//  clear screen
 	al_clear_to_color(al_map_rgba(0, 0, 0, 255));
 
+	//  TODO: These variables may need a mutex protection
+	//because they might be modified from logic thread!
+	size_t positionCount = playerAllX[0].size();
+	size_t lastTimeIndex = positionCount-2;  //lockstepTurnFinishTimesMilliseconds.size()-1;
+	std::cerr << "positionCount:" << positionCount << std::endl;
+
 
 	//  interpolate when drawing last rectangle
 	//  calculate expected lockstep turn time
 	uint64_t expectedDelayMilliseconds;
-	size_t lastTimeIndex = lockstepTurnFinishTimesMilliseconds.size()-1;
+	
 	if (currentLockstepTurn == 0 || currentLockstepTurn == 1)
 	{
 		//  TODO: this should be depend on logicFPS variable or some variable, not constant
@@ -600,11 +606,13 @@ void MultiPlayerState::Draw(GameEngine* game)
 	}
 
 
-	size_t positionCount = playerAllX[0].size();
+	//  TODO: maybe prune out of screen areas when drawing rectangles
+
+	
 	for (int i = 0; i < playerCount; ++i)
 	{
 		//  draw rectangles between two positions, except last pair
-		for (size_t j = 0; j < positionCount-1; ++j)
+		for (size_t j = 0; j < positionCount-2; ++j)
 		{
 			
 			int cx1 = playerAllX[i][j];
@@ -622,6 +630,8 @@ void MultiPlayerState::Draw(GameEngine* game)
 
 			al_draw_filled_rectangle(x1, y1, x2, y2, playerColors[i]);
 		}
+		if (i==0)
+    		std::cerr << "last fullblock x2:" << std::max(playerAllX[i][positionCount-3], playerAllX[i][positionCount-2]) + SNAKE_WIDTH << std::endl;
 	}
 		
 	if (true){
@@ -643,6 +653,9 @@ void MultiPlayerState::Draw(GameEngine* game)
 
 			int x2 = std::max(cx1, cx2) + SNAKE_WIDTH;
 			int y2 = std::max(cy1, cy2) + SNAKE_HEIGHT;
+
+			if (i==0)
+    			std::cerr << "largediff x2:" << x2 << std::endl;
 
 			al_draw_filled_rectangle(x1, y1, x2, y2, playerColors[i]);
 		}
@@ -681,8 +694,10 @@ void MultiPlayerState::Draw(GameEngine* game)
 				int xDiff = x2-x1;
 
 				if (lastMovementDir == DIRECTION_RIGHT)
-				    
+				{
     				x2 = x1 + (interpolateRatio*xDiff);
+					std::cerr << "interpolate x2:" << x2 << std::endl;
+				}
 				else
 					x1 = x2 - (interpolateRatio*xDiff);
 			}
@@ -797,7 +812,7 @@ void* MultiPlayerState::LogicThread(ALLEGRO_THREAD* thread, void* arg)
 			if (ev.timer.source == logicTimer)
 			{
 				//  logic stuff here
-				std::cerr << "deleteme logic begin" << std::endl;
+				//std::cerr << "deleteme logic begin" << std::endl;
 
 				//  STEP 1- Check if something need to be changed
 				bool canExecuteTurn = false;
@@ -849,6 +864,16 @@ void* MultiPlayerState::LogicThread(ALLEGRO_THREAD* thread, void* arg)
 
 						//  TODO: Collision check here
 
+						//  case 1, player collides with already existing area
+						//check traces of all players
+						for (int j = 0; j < cptr->playerCount; ++j)
+						{
+							for (size_t k = 0; k < cptr->playerAllX[j].size()-1; ++k)
+							{
+
+							}
+						}
+
 						cptr->playerX[i] = newX;
 						cptr->playerY[i] = newY;
 
@@ -859,16 +884,22 @@ void* MultiPlayerState::LogicThread(ALLEGRO_THREAD* thread, void* arg)
 
 					//  STEP 3- Send new messages for future turns
 					LogicThreadLockstepBroadcast(cptr);
+
+					uint64_t currentTimeMilliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(
+						std::chrono::system_clock::now().time_since_epoch()
+						).count();
+					cptr->lockstepTurnFinishTimesMilliseconds.push_back(currentTimeMilliseconds);
 				
 					++(cptr->currentLockstepTurn);
+				}
+				else
+				{
+					std::cerr << "skipped lockstep turn" << std::endl;
 				}
 				
 				std::cerr << "Logic frame " << cptr->logicFrameCounter << ", LockstepTurn:" << cptr->currentLockstepTurn << std::endl;
 				
-				uint64_t currentTimeMilliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(
-					std::chrono::system_clock::now().time_since_epoch()
-				).count();
-				cptr->lockstepTurnFinishTimesMilliseconds.push_back(currentTimeMilliseconds);
+				
 				
 				++cptr->logicFrameCounter;
 			}
