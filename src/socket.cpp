@@ -589,7 +589,7 @@ int Socket::ReceivePoll(int timeout)
     int retval;
 
     
-    #if PLATFORM == UNIX || PLATFORM == MAC
+    #if PLATFORM == PLATFORM_UNIX || PLATFORM == PLATFORM_MAC
         struct pollfd  fds[1];
 
         //  initialize pollfd structure

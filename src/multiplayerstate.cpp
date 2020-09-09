@@ -1200,7 +1200,7 @@ void* MultiPlayerState::ReceiveThread(ALLEGRO_THREAD* thread, void* arg)
 			const int timeout = 0;  //  milliseconds
 			for (int i = 0; i < cptr->numClients; ++i)
 			{
-				bool readyToRead(cptr->acceptSockets[i].ReceivePoll(timeout) > 0);
+				bool readyToRead = (cptr->acceptSockets[i].ReceivePoll(timeout) > 0);
 				if (readyToRead)
 				{
 					//std::cerr << "acceptSocket[" << i << "] is ready to receive." << std::endl;
