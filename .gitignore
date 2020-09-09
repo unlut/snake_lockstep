@@ -5,3 +5,6 @@
 .removeclasses.sh
 target/
 .idea/
+
+#  ignore cmake build folder
+build/
