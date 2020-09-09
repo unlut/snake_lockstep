@@ -415,7 +415,13 @@ void PacketPlayerList::Read(Buffer &buffer)
 
 uint16_t PacketPlayerList::GetBufferSize()
 {
-    return sizeof(playerCount) + playerCount*sizeof(playerId) + sizeof(playerId);
+    uint16_t sumNameLengths = 0;
+    for (size_t i = 0; i < playerCount; ++i)
+    {
+        sumNameLengths += playerNames[i].length();
+    }
+    return sizeof(playerCount) + playerCount*sizeof(playerId) + sizeof(playerId)
+            +playerCount*sizeof(uint16_t) + sumNameLengths;
 }
 
 

@@ -30,6 +30,18 @@ file(GLOB ALL_SOURCE_FILES
         )
 message("source files =" ${ALL_SOURCE_FILES})
 
+
+#  this must be done before add_executable
+#set(CMAKE_INSTALL_RPATH "${$ORIGIN}/dller")
+
+#set(CMAKE_INSTALL_RPATH "$ORIGIN")
+
+#set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+SET(CMAKE_INSTALL_RPATH "$\{ORIGIN\}/../dlller/")
+
 #  define project output
 add_executable(testAllegro ${ALL_SOURCE_FILES})
 ##target_link_libraries(testAllegro ${OPENGL_LIBRARIES} )
@@ -52,13 +64,22 @@ if (UNIX AND NOT APPLE)
     #PKG_SEARCH_MODULE(ALLEGRO5 REQUIRED 
     #pkg_search_module(ALLEGRO5 REQUIRED allegro-5)
     
-    TARGET_LINK_LIBRARIES(testAllegro  /usr/lib/x86_64-linux-gnu/liballegro.so)
-    TARGET_LINK_LIBRARIES(testAllegro /usr/lib/x86_64-linux-gnu/liballegro_image.so)
-    TARGET_LINK_LIBRARIES(testAllegro /usr/lib/x86_64-linux-gnu/liballegro_primitives.so)
-    TARGET_LINK_LIBRARIES(testAllegro /usr/lib/x86_64-linux-gnu/liballegro_font.so)
-    TARGET_LINK_LIBRARIES(testAllegro /usr/lib/x86_64-linux-gnu/liballegro_ttf.so)
-    TARGET_LINK_LIBRARIES(testAllegro /usr/lib/x86_64-linux-gnu/liballegro_audio.so)
-    TARGET_LINK_LIBRARIES(testAllegro /usr/lib/x86_64-linux-gnu/liballegro_acodec.so)
+    #TARGET_LINK_LIBRARIES(testAllegro  /usr/lib/x86_64-linux-gnu/liballegro.so)
+    #TARGET_LINK_LIBRARIES(testAllegro /usr/lib/x86_64-linux-gnu/liballegro_image.so)
+    #TARGET_LINK_LIBRARIES(testAllegro /usr/lib/x86_64-linux-gnu/liballegro_primitives.so)
+    #TARGET_LINK_LIBRARIES(testAllegro /usr/lib/x86_64-linux-gnu/liballegro_font.so)
+    #TARGET_LINK_LIBRARIES(testAllegro /usr/lib/x86_64-linux-gnu/liballegro_ttf.so)
+    #TARGET_LINK_LIBRARIES(testAllegro /usr/lib/x86_64-linux-gnu/liballegro_audio.so)
+    #TARGET_LINK_LIBRARIES(testAllegro /usr/lib/x86_64-linux-gnu/liballegro_acodec.so)
+    
+    
+    TARGET_LINK_LIBRARIES(testAllegro "${CMAKE_CURRENT_SOURCE_DIR}/dlller/liballegro.so")
+    TARGET_LINK_LIBRARIES(testAllegro "${CMAKE_CURRENT_SOURCE_DIR}/dlller/liballegro_image.so")
+    TARGET_LINK_LIBRARIES(testAllegro "${CMAKE_CURRENT_SOURCE_DIR}/dlller/liballegro_primitives.so")
+    TARGET_LINK_LIBRARIES(testAllegro "${CMAKE_CURRENT_SOURCE_DIR}/dlller/liballegro_font.so")
+    TARGET_LINK_LIBRARIES(testAllegro "${CMAKE_CURRENT_SOURCE_DIR}/dlller/liballegro_ttf.so")
+    TARGET_LINK_LIBRARIES(testAllegro "${CMAKE_CURRENT_SOURCE_DIR}/dlller/liballegro_audio.so")
+    TARGET_LINK_LIBRARIES(testAllegro "${CMAKE_CURRENT_SOURCE_DIR}/dlller/liballegro_acodec.so")
 endif()
 
 
