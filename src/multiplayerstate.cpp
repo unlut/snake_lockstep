@@ -604,7 +604,7 @@ void MultiPlayerState::Draw(GameEngine* game)
 	for (int i = 0; i < playerCount; ++i)
 	{
 		//  draw rectangles between two positions, except last pair
-		for (size_t j = 0; j < positionCount-2; ++j)
+		for (size_t j = 0; j < positionCount-1; ++j)
 		{
 			
 			int cx1 = playerAllX[i][j];
@@ -624,9 +624,9 @@ void MultiPlayerState::Draw(GameEngine* game)
 		}
 	}
 		
-	
+	if (true){
 	//  draw last rectangle
-	if (true || diff >= expectedDelayMilliseconds)
+	if (false || diff >= expectedDelayMilliseconds)
 	{
 		for (int i = 0; i < playerCount; ++i)
 		{
@@ -649,9 +649,11 @@ void MultiPlayerState::Draw(GameEngine* game)
 	}
 	else
 	{
+		//  interpolated draw
+		std::cerr << "interpolation ratio:" << interpolateRatio << std::endl;
 		for (int i = 0; i < playerCount; ++i)
 		{
-			//  interpolated draw
+			
 			int cx1 = playerAllX[i][positionCount-2];
 			int cy1 = playerAllY[i][positionCount-2];
 
@@ -706,26 +708,9 @@ void MultiPlayerState::Draw(GameEngine* game)
 			al_draw_filled_rectangle(x1, y1, x2, y2, playerColors[i]);
 		}
 	}
-
+	}
 
 		
-
-		/*  old draw code here
-		for (size_t j = 0; j < playerAllX[i].size() - 1; ++j)
-		{
-			int cx = playerAllX[i][j];
-			int cy = playerAllY[i][j];
-
-			int x1 = cx - SNAKE_WIDTH;
-			int y1 = cy - SNAKE_HEIGHT;
-
-			int x2 = cx + SNAKE_WIDTH;
-			int y2 = cy + SNAKE_HEIGHT;
-			al_draw_filled_rectangle(x1, y1, x2, y2, playerColors[i]);
-		}
-		*/
-	
-
 
 	if (false && isHost)
 	{
@@ -1131,17 +1116,17 @@ bool MultiPlayerState::HostBroadcastMessages(uint32_t packetTurn, void* arg)
 		{
 			messagesToSent->push_back(cptr->clientMessages[packetTurn][j]);
 		}
-		std::cerr << "deleteme1" << std::endl;
+		//std::cerr << "deleteme1" << std::endl;
 		//  also include the host's own message
 		messagesToSent->push_back(cptr->selfMessages[packetTurn]);
-		std::cerr << "deleteme2" << std::endl;
+		//std::cerr << "deleteme2" << std::endl;
 
 		std::cerr << "selfMessages size:" << cptr->selfMessages.size() << std::endl;
 		std::cerr << "packetTurn:" << packetTurn << std::endl;
 		std::cerr << (int) (cptr->selfMessages[packetTurn]->GetPacketType()) << std::endl;
 
 		PacketActions actionsPacket(messagesToSent, packetTurn);
-		std::cerr << "deleteme3" << std::endl;
+		//std::cerr << "deleteme3" << std::endl;
 
 		//  send it to all clients
 		std::cerr << "Host --- Sending messages of turn " << packetTurn << " to all clients." << std::endl;
@@ -1149,20 +1134,22 @@ bool MultiPlayerState::HostBroadcastMessages(uint32_t packetTurn, void* arg)
 		{
 			cptr->acceptSockets[j].Send(actionsPacket);
 		}
-		std::cerr << "deleteme4" << std::endl;
+		//std::cerr << "deleteme4" << std::endl;
 
-		//  remember last sent turn
-		cptr->lastSentTurn = packetTurn;
+		
 
 		//  keep a copy for yourself
-		std::cerr << "deleteme5" << std::endl;
+		//std::cerr << "deleteme5" << std::endl;
 		for (size_t j = 0; j < messagesToSent->size(); ++j)
 		{
 			cptr->turnMessages[packetTurn].push_back(  (*messagesToSent)[j] );
 		}
-		std::cerr << "deleteme6" << std::endl;
+		//std::cerr << "deleteme6" << std::endl;
 		cptr->turnMessages[packetTurn].push_back(cptr->selfMessages[packetTurn]);
-		std::cerr << "deleteme7" << std::endl;
+		//std::cerr << "deleteme7" << std::endl;
+
+		//  remember last sent turn
+		cptr->lastSentTurn = packetTurn;
 	}
 
 }
